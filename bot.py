@@ -123,7 +123,12 @@ def teclado_tipo_wod():
         [
             InlineKeyboardButton("CHIPPER",  callback_data="tipo_chipper"),
             InlineKeyboardButton("LADDER",   callback_data="tipo_ladder"),
-            InlineKeyboardButton("TABATA",   callback_data="tipo_tabata"),
+            InlineKeyboardButton("DEATH BY", callback_data="tipo_death_by"),
+        ],
+        [
+            InlineKeyboardButton("HERO WOD", callback_data="tipo_hero"),
+            InlineKeyboardButton("GRINDER",  callback_data="tipo_grinder"),
+            InlineKeyboardButton("RFT",      callback_data="tipo_rft"),
         ],
         [InlineKeyboardButton("💀 SORPRÉNDEME CABRÓN", callback_data="tipo_random")],
     ])
@@ -514,13 +519,16 @@ async def generate_wod(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     tipo_raw = ud['wod_tipo']
     tipo_definiciones = {
-        'AMRAP':    'AMRAP — As Many Rounds/Reps As Possible. Lista de movimientos con reps por ronda.',
-        'FORTIME':  'FOR TIME — Completar X rondas o total de reps lo más rápido posible.',
-        'EMOM':     'EMOM — Every Minute On the Minute. Cada minuto un movimiento o secuencia.',
-        'CHIPPER':  'CHIPPER — Lista larga de ejercicios, una sola ronda, en orden.',
-        'LADDER':   'LADDER — Reps suben o bajan cada ronda (ej. 2-4-6-8 o 21-15-9).',
-        'TABATA':   'TABATA — 20s trabajo / 10s descanso × 8 intervalos por movimiento.',
-        'RANDOM':   'RANDOM — Tú eliges el tipo más apropiado y lo especificas en el output.',
+        'AMRAP':    'AMRAP — As Many Rounds/Reps As Possible. Lista de movimientos con reps por ronda. El atleta completa el máximo de rondas posibles en el tiempo dado.',
+        'FORTIME':  'FOR TIME — Completar un número fijo de rondas o el total de reps lo más rápido posible. El reloj para cuando terminas.',
+        'EMOM':     'EMOM — Every Minute On the Minute. Cada minuto se realiza un movimiento o secuencia. El descanso es el tiempo restante del minuto.',
+        'CHIPPER':  'CHIPPER — Lista larga de ejercicios (5-8 movimientos), una sola ronda, en orden de inicio a fin. Alto volumen total.',
+        'LADDER':   'LADDER — Reps escalan cada ronda. Puede ser ascendente (1-2-3-4...), descendente (21-15-9) o pirámide (3-6-9-6-3).',
+        'DEATH_BY': 'DEATH BY — Escalera ascendente: cada minuto el atleta hace +1 rep del movimiento principal. Sigue hasta el fallo. Ej: Minuto 1 → 1 rep, Minuto 2 → 2 reps, etc. Termina cuando no puede completar el minuto.',
+        'HERO':     'HERO WOD — WOD de homenaje estilo CrossFit Hero. Largo, brutal, siempre For Time. Puede ser un Hero clásico (Murph, DT, JT, Nate, Nutts, Hansen, Josh, Randy) O uno NUEVO creado por BRUTUS en honor a alguien. Estructura épica: 3+ movimientos, volumen alto, incluye correr o remo. DALE NOMBRE DE PERSONA al WOD.',
+        'GRINDER':  'GRINDER — WOD largo de 25-40 minutos, destrucción lenta y mental. AMRAP o For Time con volumen alto. El reto es mental tanto como físico. Usar el tiempo dado como referencia pero priorizando el volumen.',
+        'RFT':      'RFT — Rounds For Time. Número fijo de rondas (3, 4 o 5 rondas) completadas contra el reloj lo más rápido posible. Similar a For Time pero con estructura de rondas definida.',
+        'RANDOM':   'RANDOM — Tú eliges el tipo más apropiado para los parámetros dados y lo especificas claramente en el output.',
     }
     tipo_instruccion = tipo_definiciones.get(tipo_raw, tipo_raw)
 
