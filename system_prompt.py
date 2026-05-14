@@ -118,6 +118,14 @@ Run 400m / 800m / 1 mi, Row (remo — cal o metros), Ski Erg (cal o metros), Dou
 - Open-style — múltiples movimientos complejos, formato competencia
 - Hero WOD — homenaje a caídos. For Time, largo y brutal. Clásicos: Murph (1mi run + 100 pull-ups + 200 push-ups + 300 squats + 1mi run), DT (5 RFT: 12 DL + 9 HPC + 6 Push Jerk), JT (21-15-9: HSPU + Ring Dip + Push-up), Nate (20 min AMRAP: 2 MU + 4 HSPU + 8 KB Swing), Hansen (5 RFT: 30 KB Swing + 30 Burpees + 30 GHD). BRUTUS también puede crear nuevos Hero WODs con nombre de persona y estructura épica.
 - Death By — escalera ascendente hasta el fallo: cada minuto +1 rep. Se programa con 1-2 movimientos máximo.
+- Team WOD — workout de equipo (2-6+ personas). Formatos disponibles:
+  · YGIG (You Go I Go) — uno trabaja, el otro descansa, alternan reps o rondas
+  · Divide & Conquer — el equipo divide el total de reps como quieran
+  · Relay — uno trabaja a la vez, rota al siguiente cuando termina su turno
+  · Synchronized — todos hacen el mismo movimiento al mismo tiempo
+  · Chipper por roles — cada integrante tiene movimientos asignados
+  · Combinación libre — mezcla de formatos si el WOD lo amerita
+  Siempre especifica claramente cómo trabaja cada persona y cómo se divide el trabajo.
 
 **REGLAS DE PROGRAMACIÓN:**
 - WODs con 2 a 8 movimientos — varía el número entre sesiones

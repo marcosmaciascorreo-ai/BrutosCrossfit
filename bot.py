@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 # --- STATES ---
 (
     WOD_TIPO,
+    WOD_EQUIPO,
     WOD_TIEMPO,
     WOD_TIEMPO_CUSTOM,
     WOD_INTENSIDAD,
@@ -49,7 +50,7 @@ logger = logging.getLogger(__name__)
     SEM_NIVELES,
     SEM_CONFIRMAR,
     SKILL_SELECCION,
-) = range(17)
+) = range(18)
 
 # --- SKILL NAMES MAP ---
 SKILL_NOMBRES = {
@@ -131,6 +132,7 @@ def teclado_tipo_wod():
             InlineKeyboardButton("GRINDER",  callback_data="tipo_grinder"),
             InlineKeyboardButton("RFT",      callback_data="tipo_rft"),
         ],
+        [InlineKeyboardButton("🤝 TEAM WOD",            callback_data="tipo_team")],
         [InlineKeyboardButton("❓ ¿Qué es cada tipo?",  callback_data="tipo_info")],
         [InlineKeyboardButton("💀 SORPRÉNDEME CABRÓN", callback_data="tipo_random")],
     ])
@@ -219,6 +221,19 @@ def teclado_razon_cambio() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("📈 Muy fácil, necesita reto",  callback_data="razon_facil")],
         [InlineKeyboardButton("🔄 Solo quiero variedad",       callback_data="razon_variedad")],
         [InlineKeyboardButton("◀️ Cancelar",                   callback_data="razon_cancelar")],
+    ])
+
+def teclado_equipo() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("2 personas",  callback_data="equipo_2"),
+            InlineKeyboardButton("3 personas",  callback_data="equipo_3"),
+        ],
+        [
+            InlineKeyboardButton("4 personas",  callback_data="equipo_4"),
+            InlineKeyboardButton("5 personas",  callback_data="equipo_5"),
+        ],
+        [InlineKeyboardButton("👥 Grupo grande (6+)", callback_data="equipo_6plus")],
     ])
 
 # SEMANA KEYBOARDS
@@ -416,7 +431,8 @@ TIPO_INFO_TEXT = (
     "*DEATH BY* — +1 rep por minuto hasta que no puedas completar el minuto.\n\n"
     "*HERO WOD* — Homenaje For Time, largo y brutal. Puede ser clásico (Murph, DT, JT) o uno creado por BRUTUS.\n\n"
     "*GRINDER* — Destrucción lenta de 25-40 min. El reto es mental tanto como físico.\n\n"
-    "*RFT* — 3-5 rondas fijas completadas lo más rápido posible."
+    "*RFT* — 3-5 rondas fijas completadas lo más rápido posible.\n\n"
+    "*TEAM WOD* — Workout de equipo (2-6+ personas). BRUTUS elige el formato: You Go I Go, Divide & Conquer, Relay o Synchronized."
 )
 
 async def handle_wod_tipo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -427,10 +443,35 @@ async def handle_wod_tipo(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "tipo_info":
         await query.message.reply_text(TIPO_INFO_TEXT, parse_mode="Markdown")
         return WOD_TIPO
+    if query.data == "tipo_team":
+        context.user_data['wod_tipo'] = 'TEAM'
+        await query.edit_message_text(
+            "TEAM WOD 🤝\n\n¿De cuántos es el equipo?",
+            reply_markup=teclado_equipo()
+        )
+        return WOD_EQUIPO
     tipo = query.data.replace("tipo_", "").upper()
     context.user_data['wod_tipo'] = tipo
+    context.user_data.pop('wod_equipo', None)
     await query.edit_message_text(
         f"Tipo: {tipo}\n\n¿Cuántos minutos?",
+        reply_markup=teclado_tiempo()
+    )
+    return WOD_TIEMPO
+
+async def handle_wod_equipo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    equipo_map = {
+        "equipo_2":     "2 personas",
+        "equipo_3":     "3 personas",
+        "equipo_4":     "4 personas",
+        "equipo_5":     "5 personas",
+        "equipo_6plus": "6 o más personas (grupo grande)",
+    }
+    context.user_data['wod_equipo'] = equipo_map[query.data]
+    await query.edit_message_text(
+        f"TEAM WOD — {context.user_data['wod_equipo']}\n\n¿Cuántos minutos?",
         reply_markup=teclado_tiempo()
     )
     return WOD_TIEMPO
@@ -508,9 +549,11 @@ async def handle_wod_niveles(update: Update, context: ContextTypes.DEFAULT_TYPE)
     }
     context.user_data['wod_niveles'] = niv_map[query.data]
     ud = context.user_data
+    equipo_line = f"• Equipo: {ud['wod_equipo']}\n" if ud.get('wod_equipo') else ""
     summary = (
         "Confirmando tu tortura:\n"
         f"• Tipo: {ud['wod_tipo']}\n"
+        + equipo_line +
         f"• Tiempo: {ud['wod_tiempo']} minutos\n"
         f"• Intensidad: {ud['wod_intensidad']}\n"
         f"• Enfoque: {ud['wod_enfoque']}\n"
@@ -557,7 +600,22 @@ async def generate_wod(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         'RFT':      'RFT — Rounds For Time. Número fijo de rondas (3, 4 o 5 rondas) completadas contra el reloj lo más rápido posible. Similar a For Time pero con estructura de rondas definida.',
         'RANDOM':   'RANDOM — Tú eliges el tipo más apropiado para los parámetros dados y lo especificas claramente en el output.',
     }
-    tipo_instruccion = tipo_definiciones.get(tipo_raw, tipo_raw)
+
+    if tipo_raw == 'TEAM':
+        equipo = ud.get('wod_equipo', '2 personas')
+        tipo_instruccion = (
+            f"TEAM WOD de {equipo} — Workout diseñado para que el equipo trabaje junto. "
+            f"Elige el formato que mejor encaje con el enfoque y el tiempo: "
+            f"YGIG (You Go I Go — alternan reps o rondas uno a la vez), "
+            f"Divide & Conquer (dividen el total de reps como quieran), "
+            f"Relay (uno trabaja mientras el resto descansa, rotan), "
+            f"Synchronized (todos hacen el mismo movimiento al mismo tiempo) "
+            f"o una combinación creativa. "
+            f"Indica claramente en el WOD cómo trabaja cada persona y cómo se dividen el trabajo. "
+            f"Diseña el volumen total pensando en {equipo} trabajando juntos."
+        )
+    else:
+        tipo_instruccion = tipo_definiciones.get(tipo_raw, tipo_raw)
 
     movimientos_semana = get_movimientos_semana(ud)
     semana_info = '\n'.join(movimientos_semana) if movimientos_semana else 'Primera sesión de la semana — libertad total.'
@@ -1042,6 +1100,7 @@ def main() -> None:
         ],
         states={
             WOD_TIPO:         [CallbackQueryHandler(handle_wod_tipo,          pattern="^(tipo_|reiniciar_wod)")],
+            WOD_EQUIPO:       [CallbackQueryHandler(handle_wod_equipo,        pattern="^equipo_")],
             WOD_TIEMPO:       [CallbackQueryHandler(handle_wod_tiempo_btn,    pattern="^tiempo_")],
             WOD_TIEMPO_CUSTOM:[MessageHandler(filters.TEXT & ~filters.COMMAND, handle_wod_tiempo_custom)],
             WOD_INTENSIDAD:   [CallbackQueryHandler(handle_wod_intensidad,    pattern="^int_")],
