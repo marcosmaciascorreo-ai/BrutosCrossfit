@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
     WOD_CONFIRMAR,
     WOD_AJUSTE,
     WOD_ELEGIR_MOV,
+    WOD_RAZON_CAMBIO,
     SEM_ENFOQUE,
     SEM_DURACION,
     SEM_DURACION_CUSTOM,
@@ -48,7 +49,7 @@ logger = logging.getLogger(__name__)
     SEM_NIVELES,
     SEM_CONFIRMAR,
     SKILL_SELECCION,
-) = range(16)
+) = range(17)
 
 # --- SKILL NAMES MAP ---
 SKILL_NOMBRES = {
@@ -210,6 +211,15 @@ def teclado_movimientos_wod(movimientos: list) -> InlineKeyboardMarkup:
     ]
     buttons.append([InlineKeyboardButton("◀️ Cancelar", callback_data="mov_cancelar")])
     return InlineKeyboardMarkup(buttons)
+
+def teclado_razon_cambio() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🚫 No tenemos ese equipo",     callback_data="razon_equipo")],
+        [InlineKeyboardButton("📉 Muy difícil para el grupo", callback_data="razon_dificil")],
+        [InlineKeyboardButton("📈 Muy fácil, necesita reto",  callback_data="razon_facil")],
+        [InlineKeyboardButton("🔄 Solo quiero variedad",       callback_data="razon_variedad")],
+        [InlineKeyboardButton("◀️ Cancelar",                   callback_data="razon_cancelar")],
+    ])
 
 # SEMANA KEYBOARDS
 def teclado_semana_enfoque():
@@ -398,15 +408,15 @@ async def start_wod(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 TIPO_INFO_TEXT = (
     "📋 *Tipos de WOD — guía rápida:*\n\n"
-    "🔄 *AMRAP* — Máximo de rondas en el tiempo dado. El reloj no para.\n\n"
-    "⏱ *FOR TIME* — Termina lo más rápido posible. El reloj para cuando acabas.\n\n"
-    "⏰ *EMOM* — Cada minuto un trabajo; el tiempo restante es descanso.\n\n"
-    "📋 *CHIPPER* — Lista larga \\(5-8 ejercicios\\), una sola ronda de inicio a fin.\n\n"
-    "📈 *LADDER* — Reps que escalan: ascendente \\(1-2-3...\\) o descendente \\(21-15-9\\).\n\n"
-    "💀 *DEATH BY* — +1 rep por minuto hasta que no puedas completar el minuto.\n\n"
-    "🏆 *HERO WOD* — Homenaje For Time. Largo y brutal. Clásico \\(Murph, DT, JT\\) o uno BRUTUS.\n\n"
-    "🔥 *GRINDER* — Destrucción lenta, 25-40 min. El reto es mental tanto como físico.\n\n"
-    "🎯 *RFT* — 3-5 rondas fijas completadas contra el reloj."
+    "*AMRAP* — Máximo de rondas posibles en el tiempo dado. El reloj no para.\n\n"
+    "*FOR TIME* — Termina lo más rápido posible. El reloj para cuando acabas.\n\n"
+    "*EMOM* — Cada minuto un trabajo; el tiempo restante del minuto es descanso.\n\n"
+    "*CHIPPER* — Lista larga (5-8 ejercicios), una sola ronda de inicio a fin.\n\n"
+    "*LADDER* — Reps que escalan: ascendente (1-2-3...) o descendente (21-15-9).\n\n"
+    "*DEATH BY* — +1 rep por minuto hasta que no puedas completar el minuto.\n\n"
+    "*HERO WOD* — Homenaje For Time, largo y brutal. Puede ser clásico (Murph, DT, JT) o uno creado por BRUTUS.\n\n"
+    "*GRINDER* — Destrucción lenta de 25-40 min. El reto es mental tanto como físico.\n\n"
+    "*RFT* — 3-5 rondas fijas completadas lo más rápido posible."
 )
 
 async def handle_wod_tipo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -415,7 +425,7 @@ async def handle_wod_tipo(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "reiniciar_wod":
         return await start_wod(update, context)
     if query.data == "tipo_info":
-        await query.message.reply_text(TIPO_INFO_TEXT, parse_mode="MarkdownV2")
+        await query.message.reply_text(TIPO_INFO_TEXT, parse_mode="Markdown")
         return WOD_TIPO
     tipo = query.data.replace("tipo_", "").upper()
     context.user_data['wod_tipo'] = tipo
@@ -662,9 +672,35 @@ async def handle_elegir_movimiento(update: Update, context: ContextTypes.DEFAULT
         return WOD_AJUSTE
 
     movimiento_a_cambiar = movimientos[idx]
+    context.user_data['mov_a_cambiar'] = movimiento_a_cambiar
+
+    await query.edit_message_text(
+        f"*{movimiento_a_cambiar.title()}*\n\n¿Por qué lo quieres cambiar?",
+        parse_mode="Markdown",
+        reply_markup=teclado_razon_cambio(),
+    )
+    return WOD_RAZON_CAMBIO
+
+async def handle_razon_cambio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "razon_cancelar":
+        await query.edit_message_text("Cancelado.")
+        return WOD_AJUSTE
+
+    movimiento_a_cambiar = context.user_data.get('mov_a_cambiar', '')
     wod_original = context.user_data.get('wod_actual', '')
 
-    await query.edit_message_text(f"Cambiando *{movimiento_a_cambiar}*... 🔨", parse_mode="Markdown")
+    razon_map = {
+        "razon_equipo":   "No tenemos ese equipo en el box. El reemplazo DEBE usar un implemento DIFERENTE al del movimiento original.",
+        "razon_dificil":  "Es demasiado difícil. Elige algo más accesible con menor demanda técnica o menor carga — que cualquiera pueda ejecutar bien.",
+        "razon_facil":    "Es muy fácil. Elige algo con mayor exigencia: más carga, mayor demanda técnica o patrón de movimiento más complejo.",
+        "razon_variedad": "Solo se quiere variedad. Elige algo COMPLETAMENTE diferente: distinto patrón de movimiento e implemento distinto.",
+    }
+    razon_instruccion = razon_map[query.data]
+
+    await query.edit_message_text(f"Cambiando *{movimiento_a_cambiar.title()}*... 🔨", parse_mode="Markdown")
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     prompt = f"""
@@ -672,7 +708,11 @@ Este es el WOD generado:
 
 {wod_original}
 
-CAMBIO: Reemplaza "{movimiento_a_cambiar}" por otro ejercicio equivalente en patrón de movimiento y equipamiento disponible. Ajusta las reps si es necesario. El resto del WOD queda exactamente igual.
+CAMBIO SOLICITADO: Reemplaza "{movimiento_a_cambiar}" por un ejercicio DIFERENTE.
+RAZÓN: {razon_instruccion}
+
+REGLA CRÍTICA: El nuevo ejercicio NO puede ser una variante del mismo movimiento. Debe ser algo genuinamente distinto.
+Ajusta las reps si es necesario. El resto del WOD queda exactamente igual.
 
 Devuelve el WOD completo en el mismo formato.
 Al final agrega: MOVIMIENTOS_USADOS: [movimientos principales]
@@ -683,7 +723,6 @@ Al final agrega: MOVIMIENTOS_USADOS: [movimientos principales]
         context.user_data['wod_actual'] = wod_limpio
         context.user_data['wod_movimientos'] = [m.strip() for m in movimientos_str.split(',') if m.strip()]
         guardar_movimientos_semana(context.user_data, movimientos_str)
-
         await query.message.reply_text(wod_limpio, parse_mode="Markdown", reply_markup=teclado_ajuste_wod())
 
     except Exception as e:
@@ -1011,6 +1050,7 @@ def main() -> None:
             WOD_CONFIRMAR:    [CallbackQueryHandler(generate_wod,             pattern="^(confirmar_wod|reiniciar_wod)")],
             WOD_AJUSTE:       [CallbackQueryHandler(handle_ajuste_wod,        pattern="^ajuste_")],
             WOD_ELEGIR_MOV:   [CallbackQueryHandler(handle_elegir_movimiento,  pattern="^mov_")],
+            WOD_RAZON_CAMBIO: [CallbackQueryHandler(handle_razon_cambio,       pattern="^razon_")],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         name="wod_conv",
