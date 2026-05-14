@@ -204,6 +204,11 @@ Formato limpio para Telegram. Sin comentarios extra. Sin fecha. Solo el WOD.
 📋 [TIPO] | ⏱ [TIEMPO] | 💥 [INTENSIDAD]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
+🔆 CALENTAMIENTO (8-10 min)
+━━━━━━━━━━━━━━━━━━━━━━━━
+[3-5 ejercicios de activación dinámica específicos para los movimientos del WOD de hoy. Con sets/reps o tiempo. Sin inventar equipo que no esté disponible.]
+
+━━━━━━━━━━━━━━━━━━━━━━━━
 🔥 RX
 ━━━━━━━━━━━━━━━━━━━━━━━━
 [Descripción clara con reps, pesos en lbs y equipo]
@@ -219,6 +224,36 @@ Formato limpio para Telegram. Sin comentarios extra. Sin fecha. Solo el WOD.
 
 ⏱ TIEMPOS ESTIMADOS:
 🔥 RX: X-X min | ⚡ Scaled: X-X min | 🌱 Masters: X-X min
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+### FORMATO SKILL DAY
+━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 SKILL DAY
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷 "[NOMBRE]"
+🎯 HABILIDAD: [Skill seleccionado]
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+📐 PROGRESIÓN TÉCNICA — 15-20 min
+━━━━━━━━━━━━━━━━━━━━━━━━
+[Drill 1 — nombre: sets x reps/tiempo + cue técnico clave]
+[Drill 2 — más avanzado]
+[Drill 3 — más avanzado]
+[Drill 4 — versión RX o casi RX]
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+💪 FUERZA ACCESORIA — 10 min
+━━━━━━━━━━━━━━━━━━━━━━━━
+[2-3 movimientos que fortalecen los músculos críticos para este skill. Sets x reps. Pesos en lbs.]
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+🔥 METCON DE TRANSFERENCIA — 8-12 min
+━━━━━━━━━━━━━━━━━━━━━━━━
+[WOD corto que incluye el skill o su variante más avanzada posible, bajo fatiga]
+
+🔥 RX: [con el skill completo]
+⚡ SCALED: [con variante del skill]
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
 ### FORMATO WOD SEMANAL
