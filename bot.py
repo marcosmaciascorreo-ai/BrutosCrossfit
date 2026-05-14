@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime
+
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ChatAction
@@ -196,7 +196,8 @@ async def cmd_start(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None
         f"✏️ */nombre* — Genera 5 nombres de WOD\n"
         f"   Estilo BRUTUS. Sin censura.\n\n"
         f"❓ */ayuda* — Ver esta pantalla de nuevo\n"
-        f"🚫 */cancel* — Cancela cualquier flujo activo\n\n"
+        f"🚫 */cancel* — Cancela cualquier flujo activo\n"
+        f"🔄 */reset* — Limpia estado atascado (si los botones no responden)\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"*Equipo disponible:* Barras olímpicas · Discos · Mancuernas · Rack pull-ups · Rope climb · Sand bags · Cajones · Kettlebells · Cuerdas de salto · Air bike\n\n"
         f"Elige o usa un comando directo:"
@@ -428,9 +429,18 @@ El nombre del WOD debe ser estilo [{estilo}] de tu banco de estilos.
             max_tokens=1500,
         )
         wod_text = response.choices[0].message.content
-        
-        # Track history
-        ud.setdefault('wods_generados', []).append(f"{ud['wod_tipo']} de {ud['wod_enfoque']}")
+
+        # Extraer movimientos del WOD generado para el historial real
+        import re
+        movimientos_lineas = [
+            l.strip("•-– ").strip()
+            for l in wod_text.split('\n')
+            if re.match(r'^[\s•\-–]*\d+\s', l) or re.match(r'^[\s•\-–]+[A-ZÁÉÍÓÚ]', l)
+        ]
+        resumen = ', '.join(movimientos_lineas[:6]) if movimientos_lineas else f"{ud['wod_tipo']} — {ud['wod_enfoque']}"
+        ud.setdefault('wods_generados', []).append(resumen)
+        if len(ud['wods_generados']) > 8:
+            ud['wods_generados'] = ud['wods_generados'][-8:]
         
         await query.message.reply_text(wod_text, parse_mode="Markdown")
         
@@ -691,7 +701,13 @@ async def cmd_nombre(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 async def cmd_ayuda(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     await cmd_start(update, _context)
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data.clear()
+    await update.message.reply_text(
+        "Estado reiniciado. Si algún flujo estaba atascado, ya quedó limpio.\nUsa /wod o /semana para empezar de nuevo."
+    )
+
+async def cancel(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Sesión cancelada.")
     return ConversationHandler.END
 
@@ -744,6 +760,7 @@ def main() -> None:
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("ayuda", cmd_ayuda))
+    app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(wod_conv_handler)
     app.add_handler(semana_conv_handler)
     app.add_handler(CallbackQueryHandler(handle_menu_inicio, pattern="^menu_(benchmark|tip)$"))
