@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
     WOD_NIVELES,
     WOD_CONFIRMAR,
     WOD_AJUSTE,
-    WOD_CAMBIAR_MOV,
+    WOD_ELEGIR_MOV,
     SEM_ENFOQUE,
     SEM_DURACION,
     SEM_DURACION_CUSTOM,
@@ -196,6 +196,14 @@ def teclado_ajuste_wod():
         [InlineKeyboardButton("⚙️ Cambiar un movimiento", callback_data="ajuste_cambiar")],
         [InlineKeyboardButton("✅ Perfecto, lo uso",       callback_data="ajuste_ok")],
     ])
+
+def teclado_movimientos_wod(movimientos: list) -> InlineKeyboardMarkup:
+    buttons = [
+        [InlineKeyboardButton(mov.strip().title(), callback_data=f"mov_{i}")]
+        for i, mov in enumerate(movimientos)
+    ]
+    buttons.append([InlineKeyboardButton("◀️ Cancelar", callback_data="mov_cancelar")])
+    return InlineKeyboardMarkup(buttons)
 
 # SEMANA KEYBOARDS
 def teclado_semana_enfoque():
@@ -544,6 +552,7 @@ MOVIMIENTOS_USADOS: [lista los 5-8 movimientos principales separados por coma]
 
         guardar_movimientos_semana(ud, movimientos)
         ud['wod_actual'] = wod_limpio
+        ud['wod_movimientos'] = [m.strip() for m in movimientos.split(',') if m.strip()]
 
         await query.message.reply_text(wod_limpio, parse_mode="Markdown", reply_markup=teclado_ajuste_wod())
 
@@ -563,12 +572,15 @@ async def handle_ajuste_wod(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
 
     if query.data == "ajuste_cambiar":
+        movimientos = context.user_data.get('wod_movimientos', [])
+        if not movimientos:
+            await query.message.reply_text("No pude detectar los movimientos. Intenta regenerar el WOD con /wod.")
+            return WOD_AJUSTE
         await query.message.reply_text(
-            "¿Qué movimiento cambias?\nEscríbelo en texto:\n"
-            "_ej: 'no tenemos rower hoy' / 'cambia el rope climb por algo equivalente'_",
-            parse_mode="Markdown"
+            "¿Cuál movimiento quieres cambiar?",
+            reply_markup=teclado_movimientos_wod(movimientos)
         )
-        return WOD_CAMBIAR_MOV
+        return WOD_ELEGIR_MOV
 
     ajuste_map = {
         "ajuste_corto":  "Acorta el WOD — reduce el tiempo o las reps manteniendo la estructura y el tipo.",
@@ -598,6 +610,7 @@ Al final agrega: MOVIMIENTOS_USADOS: [movimientos principales]
         wod_text = await _llamar_openai_wod(prompt)
         wod_limpio, movimientos = extraer_movimientos(wod_text)
         context.user_data['wod_actual'] = wod_limpio
+        context.user_data['wod_movimientos'] = [m.strip() for m in movimientos.split(',') if m.strip()]
         guardar_movimientos_semana(context.user_data, movimientos)
 
         await msg.delete()
@@ -609,10 +622,24 @@ Al final agrega: MOVIMIENTOS_USADOS: [movimientos principales]
 
     return WOD_AJUSTE
 
-async def handle_cambiar_movimiento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    instruccion = update.message.text.strip()
+async def handle_elegir_movimiento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "mov_cancelar":
+        await query.edit_message_text("Cancelado.")
+        return WOD_AJUSTE
+
+    idx = int(query.data.replace("mov_", ""))
+    movimientos = context.user_data.get('wod_movimientos', [])
+    if idx >= len(movimientos):
+        await query.edit_message_text("Error de índice. Intenta de nuevo.")
+        return WOD_AJUSTE
+
+    movimiento_a_cambiar = movimientos[idx]
     wod_original = context.user_data.get('wod_actual', '')
 
+    await query.edit_message_text(f"Cambiando *{movimiento_a_cambiar}*... 🔨", parse_mode="Markdown")
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     prompt = f"""
@@ -620,23 +647,23 @@ Este es el WOD generado:
 
 {wod_original}
 
-El coach pide este cambio específico: "{instruccion}"
+CAMBIO: Reemplaza "{movimiento_a_cambiar}" por otro ejercicio equivalente en patrón de movimiento y equipamiento disponible. Ajusta las reps si es necesario. El resto del WOD queda exactamente igual.
 
-Aplica solo ese cambio. Mantén todo lo demás exactamente igual.
 Devuelve el WOD completo en el mismo formato.
 Al final agrega: MOVIMIENTOS_USADOS: [movimientos principales]
 """
     try:
         wod_text = await _llamar_openai_wod(prompt)
-        wod_limpio, movimientos = extraer_movimientos(wod_text)
+        wod_limpio, movimientos_str = extraer_movimientos(wod_text)
         context.user_data['wod_actual'] = wod_limpio
-        guardar_movimientos_semana(context.user_data, movimientos)
+        context.user_data['wod_movimientos'] = [m.strip() for m in movimientos_str.split(',') if m.strip()]
+        guardar_movimientos_semana(context.user_data, movimientos_str)
 
-        await update.message.reply_text(wod_limpio, parse_mode="Markdown", reply_markup=teclado_ajuste_wod())
+        await query.message.reply_text(wod_limpio, parse_mode="Markdown", reply_markup=teclado_ajuste_wod())
 
     except Exception as e:
         logger.error(f"Error cambio movimiento: {e}")
-        await update.message.reply_text("Error al cambiar. Intenta de nuevo.")
+        await query.message.reply_text("Error al cambiar. Intenta de nuevo.")
 
     return WOD_AJUSTE
 
@@ -958,7 +985,7 @@ def main() -> None:
             WOD_NIVELES:      [CallbackQueryHandler(handle_wod_niveles,       pattern="^niv_")],
             WOD_CONFIRMAR:    [CallbackQueryHandler(generate_wod,             pattern="^(confirmar_wod|reiniciar_wod)")],
             WOD_AJUSTE:       [CallbackQueryHandler(handle_ajuste_wod,        pattern="^ajuste_")],
-            WOD_CAMBIAR_MOV:  [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cambiar_movimiento)],
+            WOD_ELEGIR_MOV:   [CallbackQueryHandler(handle_elegir_movimiento,  pattern="^mov_")],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         name="wod_conv",
