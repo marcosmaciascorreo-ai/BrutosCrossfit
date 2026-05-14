@@ -130,6 +130,7 @@ def teclado_tipo_wod():
             InlineKeyboardButton("GRINDER",  callback_data="tipo_grinder"),
             InlineKeyboardButton("RFT",      callback_data="tipo_rft"),
         ],
+        [InlineKeyboardButton("❓ ¿Qué es cada tipo?",  callback_data="tipo_info")],
         [InlineKeyboardButton("💀 SORPRÉNDEME CABRÓN", callback_data="tipo_random")],
     ])
 
@@ -395,11 +396,27 @@ async def start_wod(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(msg, reply_markup=teclado_tipo_wod())
     return WOD_TIPO
 
+TIPO_INFO_TEXT = (
+    "📋 *Tipos de WOD — guía rápida:*\n\n"
+    "🔄 *AMRAP* — Máximo de rondas en el tiempo dado. El reloj no para.\n\n"
+    "⏱ *FOR TIME* — Termina lo más rápido posible. El reloj para cuando acabas.\n\n"
+    "⏰ *EMOM* — Cada minuto un trabajo; el tiempo restante es descanso.\n\n"
+    "📋 *CHIPPER* — Lista larga \\(5-8 ejercicios\\), una sola ronda de inicio a fin.\n\n"
+    "📈 *LADDER* — Reps que escalan: ascendente \\(1-2-3...\\) o descendente \\(21-15-9\\).\n\n"
+    "💀 *DEATH BY* — +1 rep por minuto hasta que no puedas completar el minuto.\n\n"
+    "🏆 *HERO WOD* — Homenaje For Time. Largo y brutal. Clásico \\(Murph, DT, JT\\) o uno BRUTUS.\n\n"
+    "🔥 *GRINDER* — Destrucción lenta, 25-40 min. El reto es mental tanto como físico.\n\n"
+    "🎯 *RFT* — 3-5 rondas fijas completadas contra el reloj."
+)
+
 async def handle_wod_tipo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     if query.data == "reiniciar_wod":
         return await start_wod(update, context)
+    if query.data == "tipo_info":
+        await query.message.reply_text(TIPO_INFO_TEXT, parse_mode="MarkdownV2")
+        return WOD_TIPO
     tipo = query.data.replace("tipo_", "").upper()
     context.user_data['wod_tipo'] = tipo
     await query.edit_message_text(
